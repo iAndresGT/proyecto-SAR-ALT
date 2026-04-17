@@ -62,7 +62,7 @@ class SAR_Indexer:
         """
         self.urls = set() # hash para las urls procesadas,
         self.index = {} # hash para el indice invertido de terminos --> clave: termino, valor: posting list
-        self.docs = {} # diccionario de terminos --> clave: entero(docid),  valor: ruta del fichero.
+        self.docs = {} # diccionario de documentos --> clave: entero(docid),  valor: ruta del fichero.
         self.articles = {} # hash de articulos --> clave entero (artid), valor: la info necesaria para diferencia los artículos dentro de su fichero
         self.tokenizer = re.compile(r"\W+") # expresion regular para hacer la tokenizacion
         self.show_all = False # valor por defecto, se cambia con self.set_showall()
@@ -356,11 +356,22 @@ class SAR_Indexer:
         dependiendo del valor de self.positional se debe ampliar el indexado
 
         """
-
+        docID = len(self.docs.keys())
+        self.docs[docID] = filename
         for i, line in enumerate(open(filename)):
             j = self.parse_article(line)
+            self.articles[i] = j['url']
+            k = 0
+            for term in j[self.DEFAULT_FIELD]:
+                k += 1
+                if term in self.index.keys():
+                    if len(self.index[term]) == 0 or self.index[term][-1][0] != docID:
+                        # Primera aparición del termino en el doc
+                        self.index[term].append((docID, [k]))
+                    else:
+                        self.index[term][-1][1].append(k)
 
-
+            
         #
         # 
         # Solo se debe indexar el contenido self.DEFAULT_FIELD
