@@ -356,22 +356,6 @@ class SAR_Indexer:
         dependiendo del valor de self.positional se debe ampliar el indexado
 
         """
-        docID = len(self.docs.keys())
-        self.docs[docID] = filename
-        for i, line in enumerate(open(filename)):
-            j = self.parse_article(line)
-            self.articles[i] = j['url']
-            k = 0
-            for term in j[self.DEFAULT_FIELD]:
-                k += 1
-                if term in self.index.keys():
-                    if len(self.index[term]) == 0 or self.index[term][-1][0] != docID:
-                        # Primera aparición del termino en el doc
-                        self.index[term].append((docID, [k]))
-                    else:
-                        self.index[term][-1][1].append(k)
-
-            
         #
         # 
         # Solo se debe indexar el contenido self.DEFAULT_FIELD
@@ -381,6 +365,29 @@ class SAR_Indexer:
         #################
         ### COMPLETAR ###
         #################
+
+        docID = len(self.docs.keys())
+        self.docs[docID] = filename
+        for i, line in enumerate(open(filename)):
+            article = self.parse_article(line)
+            self.articles[i] = article['url']
+            tokens = self.tokenize(article[self.DEFAULT_FIELD])
+            for pos, term in enumerate(tokens):
+                if term not in self.index.keys():
+                    self.index[term] = []
+
+                posting = self.index[term]
+
+                if not posting or posting[-1][0] != i:
+                    # Nueva entrada para este artículo
+                    if self.positional:
+                        posting.append((i, [pos]))
+                    else:
+                        posting.append((i, []))
+                else:
+                    # Ya existe entrada: añadir posición si es posicional
+                    if self.positional:
+                        posting[-1][1].append(pos)
 
 
     def tokenize(self, text:str):
@@ -407,10 +414,19 @@ class SAR_Indexer:
         Muestra estadisticas de los indices
 
         """
-        pass
         ########################################
         ## COMPLETAR PARA TODAS LAS VERSIONES ##
         ########################################
+        print("=" * 40)
+        print(f"Documentos indexados:    {len(self.docs)}")
+        print(f"Artículos indexados: {len(self.articles)}")
+        print(f"Terminos indexados:    {len(self.index)}")
+        if self.positional:
+            print("Indexación posicional: SI")
+        if self.semantic:
+            print(f"Indecación semántica: YES")
+            print(f"Número de chuncks:   {len(self.chuncks)}")
+        print("=" * 40)
 
 
 
@@ -470,7 +486,11 @@ class SAR_Indexer:
         ########################################
         ## COMPLETAR PARA TODAS LAS VERSIONES ##
         ########################################
-        pass
+        term = self.tokenize(term)
+        if not term:
+            return []
+        term = term[0]
+        return self.index.get(term, [])
 
 
 
@@ -489,7 +509,35 @@ class SAR_Indexer:
         #################################
         ## COMPLETAR PARA POSICIONALES ##
         #################################
-        pass
+
+        tokens = self.tokenize(terms)
+        result = self.index.get(tokens[0], [])
+
+        for term in tokens[1:]:
+            next_posting = self.index.get(term, [])
+            new_result = []
+
+            i, j = 0, 0
+            while i < len(result) and j < len(next_posting):
+                artid1, positions1 = result[i]
+                artid2, positions2 = next_posting[j]
+
+                if artid1 == artid2:
+                    offset = terms.index(term)
+                    matched_positions = [p for p in positions1 
+                                        if (p + offset) in positions2]
+                    if matched_positions:
+                        new_result.append((artid1, matched_positions))
+                    i += 1
+                    j += 1
+                elif artid1 < artid2:
+                    i += 1
+                else:
+                    j += 1
+
+            result = new_result
+
+        return result
 
 
 
@@ -507,11 +555,28 @@ class SAR_Indexer:
         return: posting list con todos los artid exceptos los contenidos en p
 
         """
-        
-        pass
         ########################################
         ## COMPLETAR PARA TODAS LAS VERSIONES ##
         ########################################
+        result = []
+        all_artids = sorted(self.articles.keys())
+        
+        i = 0  # puntero sobre all_artids
+        j = 0  # puntero sobre p (la posting list a invertir)
+
+        while i < len(all_artids):
+            artid = all_artids[i]
+            
+            if j < len(p) and p[j][0] == artid:
+                # Este artid esta en p
+                i += 1
+                j += 1
+            else:
+                # Este artid no esta en p
+                result.append((artid, []))
+                i += 1
+
+        return result
 
 
 
@@ -527,18 +592,32 @@ class SAR_Indexer:
         return: posting list con los artid incluidos en p1 y p2
 
         """
-        
-        pass
         ########################################
         ## COMPLETAR PARA TODAS LAS VERSIONES ##
         ########################################
+        result = []
+        i, j = 0, 0 # puntero sobre p1, puntero sobre p2
+
+        while i < len(p1) and j < len(p2):
+            artid1 = p1[i][0]
+            artid2 = p2[j][0]
+
+            if artid1 == artid2:
+                # ambas postings tienen el artid
+                result.append(p1[i])
+                i += 1
+                j += 1
+            elif artid1 < artid2:
+                i += 1
+            else:
+                j += 1
+
+        return result
 
 
 
 
-
-
-    def minus_posting(self, p1, p2):
+    def minus_posting(self, p1: list, p2: list):
         """
         OPCIONAL PARA TODAS LAS VERSIONES
 
@@ -551,12 +630,31 @@ class SAR_Indexer:
         return: posting list con los artid incluidos de p1 y no en p2
 
         """
-
-        
-        pass
         ########################################################
         ## COMPLETAR PARA TODAS LAS VERSIONES SI ES NECESARIO ##
         ########################################################
+
+        result = []
+        i, j = 0, 0 # puntero sobre p1, puntero sobre p2
+        while i < len(p1) and j < len(p2):
+            artid1 = p1[i][0]
+            artid2 = p2[j][0]
+
+            if artid1 == artid2:
+                # ambas postings tienen el artid
+                i += 1
+                j += 1
+            elif artid1 < artid2:
+                result.append(p1[i])
+                i += 1
+            else:
+                j += 1
+        
+        while i < len(p1):
+            result.append(p1[i])
+            i += 1
+        
+        return result
 
 
 
