@@ -195,7 +195,7 @@ class SAR_Indexer:
         """
 
         #1 - completar
-
+        chunks = nltk.sent_tokenize(txt)
         #2 - completar
 
         pass             
@@ -213,6 +213,7 @@ class SAR_Indexer:
         """
         print(f"Creating kdtree ...", end="")
 	    # completar
+        self.model.fit()
         print("done!")
 
 
@@ -236,10 +237,22 @@ class SAR_Indexer:
 
         # 1
         # 2
+        chuncks = self.model.query(query, self.MAX_EMBEDDINGS)
         # 3
+        c = 2
         # 4
+        while(chuncks[len(chuncks) - 1][0] <= self.semantic_threshold and len(chuncks) >= (c - 1) * self.MAX_EMBEDDINGS):
+            chuncks = self.model.query(query, c * self.MAX_EMBEDDINGS)
+            c += 1
         # 5
 
+        articles = []
+        for _, art in chuncks:
+            if art in articles:
+                continue
+            articles.append(art)
+        
+        return articles
 
     def semantic_reranking(self, query:str, articles: List[int]):
         """
@@ -247,6 +260,7 @@ class SAR_Indexer:
         Ordena los articulos en la lista 'article' por similitud a la consulta 'query'.
         Pasos:
             1 - utiliza el método query del modelo sémantico
+            
             2 - devuelve top_k resultado, inicialmente top_k puede ser MAX_EMBEDDINGS
             3 - a partir de los chuncks se deben obtener los artículos
             3 - si entre los artículos recuperados NO estan todos los obtenidos por la RI binaria
@@ -424,7 +438,7 @@ class SAR_Indexer:
         if self.positional:
             print("Indexación posicional: SI")
         if self.semantic:
-            print(f"Indecación semántica: YES")
+            print(f"Indexación semántica: YES")
             print(f"Número de chuncks:   {len(self.chuncks)}")
         print("=" * 40)
 
