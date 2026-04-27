@@ -370,12 +370,7 @@ class SAR_Indexer:
         dependiendo del valor de self.positional se debe ampliar el indexado
 
         """
-        #
-        # 
         # Solo se debe indexar el contenido self.DEFAULT_FIELD
-        #
-        #
-        #
         #################
         ### COMPLETAR ###
         #################
@@ -384,7 +379,13 @@ class SAR_Indexer:
         self.docs[docID] = filename
         for i, line in enumerate(open(filename)):
             article = self.parse_article(line)
-            self.articles[i] = article['url']
+
+            if self.already_in_index(article):
+                continue
+
+            artid = len(self.articles)
+            self.articles[artid] = (docID, i)
+            self.urls.add(article['url'])
             tokens = self.tokenize(article[self.DEFAULT_FIELD])
             for pos, term in enumerate(tokens):
                 if term not in self.index.keys():
@@ -392,12 +393,12 @@ class SAR_Indexer:
 
                 posting = self.index[term]
 
-                if not posting or posting[-1][0] != i:
+                if not posting or posting[-1][0] != artid:
                     # Nueva entrada para este artículo
                     if self.positional:
-                        posting.append((i, [pos]))
+                        posting.append((artid, [pos]))
                     else:
-                        posting.append((i, []))
+                        posting.append((artid, []))
                 else:
                     # Ya existe entrada: añadir posición si es posicional
                     if self.positional:
@@ -438,7 +439,7 @@ class SAR_Indexer:
         if self.positional:
             print("Indexación posicional: SI")
         if self.semantic:
-            print(f"Indexación semántica: YES")
+            print(f"Indexación semántica: SI")
             print(f"Número de chuncks:   {len(self.chuncks)}")
         print("=" * 40)
 
@@ -479,6 +480,45 @@ class SAR_Indexer:
         ########################################
         ## COMPLETAR PARA TODAS LAS VERSIONES ##
         ########################################
+
+        # Tokenizar (deja "query con espacios" sin modificar)
+        tokens = re.findall(r'"[^"]*"|\S+', query)
+
+        result = None
+        negate_next = False
+
+        for token in tokens:
+            if token.upper() == 'NOT':
+                negate_next = True
+                continue
+
+            # Obtener posting según si es frase o término simple
+            if token.startswith('"') and token.endswith('"'):
+                # Búsqueda posicional: "fin de semana"
+                phrase = token[1:-1]  # quitar comillas
+                if self.positional:
+                    posting = self.get_positionals(phrase)
+                else:
+                    # Sin índice posicional: AND normal de los términos de la frase
+                    phrase_tokens = self.tokenize(phrase)
+                    posting = self.get_posting(phrase_tokens[0]) if phrase_tokens else []
+                    for t in phrase_tokens[1:]:
+                        posting = self.and_posting(posting, self.get_posting(t))
+            else:
+                posting = self.get_posting(token)
+
+            # Aplicar NOT si corresponde
+            if negate_next:
+                posting = self.reverse_posting(posting)
+                negate_next = False
+
+            # AND con el resultado acumulado
+            if result is None:
+                result = posting
+            else:
+                result = self.and_posting(result, posting)
+
+        return result if result is not None else [], query
 
 
 
@@ -527,7 +567,7 @@ class SAR_Indexer:
         tokens = self.tokenize(terms)
         result = self.index.get(tokens[0], [])
 
-        for term in tokens[1:]:
+        for offset, term in enumerate(tokens[1:], start=1):
             next_posting = self.index.get(term, [])
             new_result = []
 
@@ -537,10 +577,11 @@ class SAR_Indexer:
                 artid2, positions2 = next_posting[j]
 
                 if artid1 == artid2:
-                    offset = terms.index(term)
-                    matched_positions = [p for p in positions1 
-                                        if (p + offset) in positions2]
-                    if matched_positions:
+                    matched_positions = []
+                    for p in positions1:
+                        if (p + offset) in positions2:
+                            matched_positions.append(p)
+                    if len(matched_positions) > 0:
                         new_result.append((artid1, matched_positions))
                     i += 1
                     j += 1
