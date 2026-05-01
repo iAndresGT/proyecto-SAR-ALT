@@ -433,16 +433,21 @@ class SAR_Indexer:
         ########################################
         ## COMPLETAR PARA TODAS LAS VERSIONES ##
         ########################################
-        print("=" * 40)
-        print(f"Documentos indexados:    {len(self.docs)}")
+        print("========================================")
+        print(f"Number of indexed files: {len(self.docs)}")
+        print("----------------------------------------")
         print(f"Artículos indexados: {len(self.articles)}")
-        print(f"Terminos indexados:    {len(self.index)}")
+        print("----------------------------------------")
+        print(f"TOKENS:\n\t# of tokens in {self.DEFAULT_FIELD}: {len(self.index)}")
+        print("----------------------------------------")
         if self.positional:
-            print("Indexación posicional: SI")
+            print("Positional queries are allowed.")
+        else:
+            print("Positional queries are NOT allowed.")
         if self.semantic:
             print(f"Indexación semántica: SI")
             print(f"Número de chuncks:   {len(self.chuncks)}")
-        print("=" * 40)
+        print("========================================")
 
 
 
@@ -482,7 +487,7 @@ class SAR_Indexer:
         ## COMPLETAR PARA TODAS LAS VERSIONES ##
         ########################################
 
-        # Tokenizar (deja "query con espacios" sin modificar)
+        # Tokenizar (deja "cosas entre comillas" sin modificar)
         tokens = re.findall(r'"[^"]*"|\S+', query)
 
         result = None
@@ -495,15 +500,15 @@ class SAR_Indexer:
 
             # Obtener posting según si es frase o término simple
             if token.startswith('"') and token.endswith('"'):
-                # Búsqueda posicional: "fin de semana"
-                phrase = token[1:-1]  # quitar comillas
+                # Búsqueda posicional: "cosas entre comillas"
+                frase = token[1:-1]  # quitar comillas
                 if self.positional:
-                    posting = self.get_positionals(phrase)
+                    posting = self.get_positionals(frase)
                 else:
                     # Sin índice posicional: AND normal de los términos de la frase
-                    phrase_tokens = self.tokenize(phrase)
-                    posting = self.get_posting(phrase_tokens[0]) if phrase_tokens else []
-                    for t in phrase_tokens[1:]:
+                    frase_tokens = self.tokenize(frase)
+                    posting = self.get_posting(frase_tokens[0]) if frase_tokens else []
+                    for t in frase_tokens[1:]:
                         posting = self.and_posting(posting, self.get_posting(t))
             else:
                 posting = self.get_posting(token)
@@ -592,6 +597,8 @@ class SAR_Indexer:
                     j += 1
 
             result = new_result
+            if len(result) == 0:
+                return result
 
         return result
 
