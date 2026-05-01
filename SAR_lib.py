@@ -48,7 +48,7 @@ class SAR_Indexer:
 
 
     all_atribs = ['urls', 'index', 'docs', 'articles', 'tokenizer', 'show_all',
-                  "semantic", "chuncks", "embeddings", "chunck_index", "kdtree", "artid_to_emb"]
+                  'positional', "semantic", "chuncks", "embeddings", "chunck_index", "kdtree", "artid_to_emb"]
 
 
     def __init__(self):
@@ -66,6 +66,7 @@ class SAR_Indexer:
         self.articles = {} # hash de articulos --> clave entero (artid), valor: la info necesaria para diferencia los artículos dentro de su fichero
         self.tokenizer = re.compile(r"\W+") # expresion regular para hacer la tokenizacion
         self.show_all = False # valor por defecto, se cambia con self.set_showall()
+        self.positional = False
 
         # PARA LA AMPLIACION
         self.semantic = None
