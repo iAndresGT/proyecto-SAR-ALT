@@ -196,7 +196,7 @@ class SAR_Indexer:
         """
 
         #1 - completar
-        chunks = nltk.sent_tokenize(txt)
+        chuncks = nltk.sent_tokenize(txt)
         #2 - completar
 
         pass             
