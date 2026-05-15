@@ -261,7 +261,6 @@ class SAR_Indexer:
         Ordena los articulos en la lista 'article' por similitud a la consulta 'query'.
         Pasos:
             1 - utiliza el método query del modelo sémantico
-            
             2 - devuelve top_k resultado, inicialmente top_k puede ser MAX_EMBEDDINGS
             3 - a partir de los chuncks se deben obtener los artículos
             3 - si entre los artículos recuperados NO estan todos los obtenidos por la RI binaria
@@ -273,8 +272,24 @@ class SAR_Indexer:
         # COMPLETAR
         # 1
         # 2
+        chuncks = self.model.query(query, self.MAX_EMBEDDINGS)
         # 3
-        # 4
+        c = 1
+        result = []
+        last_iter = 0
+        while(len(articles) > 1):
+            # 4
+            for _, art in chuncks[last_iter:]:
+                if art in articles:
+                    result.append(art)
+                    articles.remove(art)
+            last_iter = c * self.MAX_EMBEDDINGS
+            # 3
+            c += 1
+            chuncks = self.model.query(query, c * self.MAX_EMBEDDINGS)
+            
+
+        return result
     
 
     ###############################
@@ -584,9 +599,19 @@ class SAR_Indexer:
 
                 if artid1 == artid2:
                     matched_positions = []
-                    for p in positions1:
-                        if (p + offset) in positions2:
-                            matched_positions.append(p)
+                    ii, jj = 0, 0
+                    while ii < len(positions1) and jj < len(positions2):
+                        p1 = positions1[ii]
+                        p2 = positions2[jj]
+                        if p1 == p2 - offset:
+                            matched_positions.append[p1]
+                            ii += 1
+                            jj += 1
+                        elif p1 < p2:
+                            ii += 1
+                        else:
+                            jj += 1
+
                     if len(matched_positions) > 0:
                         new_result.append((artid1, matched_positions))
                     i += 1
