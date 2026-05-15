@@ -621,7 +621,7 @@ class SAR_Indexer:
                         p1 = positions1[ii]
                         p2 = positions2[jj]
                         if p1 == p2 - offset:
-                            matched_positions.append[p1]
+                            matched_positions.append(p1)
                             ii += 1
                             jj += 1
                         elif p1 < p2:
