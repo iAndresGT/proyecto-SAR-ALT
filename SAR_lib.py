@@ -198,6 +198,13 @@ class SAR_Indexer:
         #1 - completar
         chuncks = nltk.sent_tokenize(txt)
         #2 - completar
+        self.chuncks.extend(chuncks)
+        for i in range(len(chuncks)):
+            self.chunck_index.append(artid)
+        
+        start_idx = len(self.chuncks)
+        self.artid_to_emb[artid] = list(range(start_idx, start_idx + len(chuncks)))
+
 
         pass             
         
@@ -214,7 +221,10 @@ class SAR_Indexer:
         """
         print(f"Creating kdtree ...", end="")
 	    # completar
-        self.model.fit()
+        self.model.fit(self.chuncks)
+
+        self.kdtree = self.model.kdtree
+        self.embeddings = self.model.embeddings
         print("done!")
 
 
@@ -330,6 +340,10 @@ class SAR_Indexer:
         #####################################################
         ## COMPLETAR SI ES NECESARIO FUNCIONALIDADES EXTRA ##
         #####################################################
+        # Si se ha indexado con la opción semántica, se deben actualizar los chuncks y crear el kdtree
+        if self.semantic:
+            self.create_kdtree()
+
         
         
     def parse_article(self, raw_line:str) -> Dict[str, str]:
@@ -404,6 +418,9 @@ class SAR_Indexer:
                     # Ya existe entrada: añadir posición si es posicional
                     if self.positional:
                         posting[-1][1].append(pos)
+            # Añadir información para la búsqueda semántica
+            if self.semantic:
+                self.update_chuncks(article[self.DEFAULT_FIELD], artid)
 
 
     def tokenize(self, text:str):
