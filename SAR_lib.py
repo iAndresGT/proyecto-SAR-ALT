@@ -530,6 +530,8 @@ class SAR_Indexer:
                 negate_next = True
                 continue
 
+            token = token.lower()
+
             # Obtener posting según si es frase o término simple
             if token.startswith('"') and token.endswith('"'):
                 # Búsqueda posicional: "cosas entre comillas"
@@ -603,6 +605,9 @@ class SAR_Indexer:
         #################################
 
         tokens = self.tokenize(terms)
+        if not tokens:
+            return []
+
         result = self.index.get(tokens[0], [])
 
         for offset, term in enumerate(tokens[1:], start=1):
@@ -620,11 +625,12 @@ class SAR_Indexer:
                     while ii < len(positions1) and jj < len(positions2):
                         p1 = positions1[ii]
                         p2 = positions2[jj]
-                        if p1 == p2 - offset:
+                        target = p1 + offset
+                        if target == p2:
                             matched_positions.append(p1)
                             ii += 1
                             jj += 1
-                        elif p1 < p2:
+                        elif target < p2:
                             ii += 1
                         else:
                             jj += 1
